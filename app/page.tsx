@@ -162,22 +162,58 @@ if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
               <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: 18, marginBottom: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#5b4fff', marginBottom: 10 }}>🤖 AI 학습 요약</div>
                 <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}>
-  {summary.split('\n').map((line, i) => {
-    const clean = line.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
-    if (line.startsWith('# ') || line.startsWith('## ') || line.startsWith('### ')) {
-      const text = clean.replace(/^#+\s/, '');
-      return <div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 16, marginBottom: 6, fontSize: line.startsWith('# ') ? 15 : 14, borderBottom: line.startsWith('## ') ? '1px solid #e4e4f0' : 'none', paddingBottom: line.startsWith('## ') ? 4 : 0 }}>{text}</div>;
+  {(() => {
+    const lines = summary.split('\n');
+    const result = [];
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      const clean = line.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+      
+      // 표 처리
+      if (line.includes('|') && line.trim().startsWith('|')) {
+        const tableLines = [];
+        while (i < lines.length && lines[i].includes('|')) {
+          if (!lines[i].includes('---')) tableLines.push(lines[i]);
+          i++;
+        }
+        if (tableLines.length > 0) {
+          const headers = tableLines[0].split('|').filter(c => c.trim());
+          const rows = tableLines.slice(1).map(r => r.split('|').filter(c => c.trim()));
+          result.push(
+            <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '10px 0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr>{headers.map((h, j) => <th key={j} style={{ background: '#f0f0f4', padding: '6px 10px', textAlign: 'left', borderBottom: '2px solid #e4e4f0', fontWeight: 700, color: '#0f0f1a' }}>{h.trim()}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, j) => <tr key={j}>{row.map((cell, k) => <td key={k} style={{ padding: '6px 10px', borderBottom: '1px solid #f0f0f4', color: '#3a3a52' }}>{cell.trim()}</td>)}</tr>)}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        continue;
+      }
+
+      if (line.startsWith('# ') || line.startsWith('## ') || line.startsWith('### ')) {
+        const text = clean.replace(/^#+\s/, '');
+        result.push(<div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 16, marginBottom: 6, fontSize: line.startsWith('# ') ? 15 : 14, borderBottom: line.startsWith('## ') ? '1px solid #e4e4f0' : 'none', paddingBottom: line.startsWith('## ') ? 4 : 0 }}>{text}</div>);
+      } else if (line.match(/^[-–>]\s/)) {
+        result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, display: 'flex', gap: 6 }}><span style={{ color: '#5b4fff', flexShrink: 0 }}>•</span><span>{clean.replace(/^[-–>]\s/, '')}</span></div>);
+      } else if (line.match(/^\d+\.\s/)) {
+        result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, fontWeight: 600 }}>{clean}</div>);
+      } else if (line === '---') {
+        result.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid #e4e4f0', margin: '10px 0' }} />);
+      } else if (!line.trim()) {
+        result.push(<div key={i} style={{ height: 6 }} />);
+      } else {
+        result.push(<div key={i} style={{ marginBottom: 4 }}>{clean}</div>);
+      }
+      i++;
     }
-    if (line.match(/^[-–]\s/)) {
-      return <div key={i} style={{ paddingLeft: 12, marginBottom: 4, display: 'flex', gap: 6 }}><span style={{ color: '#5b4fff', flexShrink: 0 }}>•</span><span>{clean.replace(/^[-–]\s/, '')}</span></div>;
-    }
-    if (line.match(/^\d+\.\s/)) {
-      return <div key={i} style={{ paddingLeft: 12, marginBottom: 4 }}>{clean}</div>;
-    }
-    if (line === '---' || line === '–––') return <hr key={i} style={{ border: 'none', borderTop: '1px solid #e4e4f0', margin: '10px 0' }} />;
-    if (!line.trim()) return <div key={i} style={{ height: 6 }} />;
-    return <div key={i} style={{ marginBottom: 4 }}>{clean}</div>;
-  })}
+    return result;
+  })()}
 </div>
                 <button onClick={() => selectedChapter && loadSummary(selectedChapter)}
                   style={{ marginTop: 12, padding: '8px 16px', background: 'transparent', border: '1.5px solid #5b4fff', color: '#5b4fff', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>

@@ -32,6 +32,8 @@ export default function Home() {
   const [loadingExplain, setLoadingExplain] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
   const [history, setHistory] = useState<{ chapter: string; correct: boolean }[]>([]);
+const [streak, setStreak] = useState(0);
+const [usedTypes, setUsedTypes] = useState<string[]>([]);
 
   useEffect(() => {
     fetch('/api/generate-question')
@@ -65,7 +67,7 @@ export default function Home() {
     const res = await fetch('/api/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'question', chapterId: selectedChapter.id }),
+      body: JSON.stringify({ mode: 'question', chapterId: selectedChapter.id, streak, usedTypes }),
     });
     const data = await res.json();
     setQuestion(data);
@@ -79,6 +81,8 @@ export default function Home() {
     const isCorrect = selectedOption === question.answer_index;
     setScore(prev => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
     setHistory(prev => [...prev, { chapter: selectedChapter?.title || '', correct: isCorrect }]);
+    setStreak(prev => isCorrect ? prev + 1 : prev - 1);
+if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
     const res = await fetch('/api/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -157,7 +161,17 @@ export default function Home() {
             {summary && (
               <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: 18, marginBottom: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#5b4fff', marginBottom: 10 }}>🤖 AI 학습 요약</div>
-                <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>{summary}</div>
+                <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}>
+  {summary.split('\n').map((line, i) => {
+    if (line.startsWith('[') && line.endsWith(']')) {
+      return <div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 14, marginBottom: 6, fontSize: 14 }}>{line}</div>;
+    }
+    if (line.startsWith('•') || line.startsWith('①') || line.startsWith('②') || line.startsWith('③')) {
+      return <div key={i} style={{ paddingLeft: 8, marginBottom: 4 }}>{line}</div>;
+    }
+    return <div key={i} style={{ marginBottom: 2 }}>{line}</div>;
+  })}
+</div>
                 <button onClick={() => selectedChapter && loadSummary(selectedChapter)}
                   style={{ marginTop: 12, padding: '8px 16px', background: 'transparent', border: '1.5px solid #5b4fff', color: '#5b4fff', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                   🔄 다시 요약하기

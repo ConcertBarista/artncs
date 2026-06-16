@@ -196,6 +196,9 @@ if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
         continue;
       }
 
+      if (line.startsWith('[') && line.endsWith(']')) {
+  return <div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 16, marginBottom: 8, fontSize: 14, borderBottom: '1px solid #e4e4f0', paddingBottom: 4 }}>{line.slice(1,-1)}</div>;
+}
       if (line.startsWith('# ') || line.startsWith('## ') || line.startsWith('### ')) {
         const text = clean.replace(/^#+\s/, '');
         result.push(<div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 16, marginBottom: 6, fontSize: line.startsWith('# ') ? 15 : 14, borderBottom: line.startsWith('## ') ? '1px solid #e4e4f0' : 'none', paddingBottom: line.startsWith('## ') ? 4 : 0 }}>{text}</div>);

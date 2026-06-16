@@ -156,7 +156,15 @@ export default function Home() {
                   ) : (
                     <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}>
                       <span style={{ fontWeight: 700, color: selectedOption === ANSWER_INDEX ? '#00c896' : '#ff4d6d' }}>{selectedOption === ANSWER_INDEX ? '✅ 정답' : '❌ 오답'}</span>
-                      <br /><br />{explanation}
+                      <br /><br /><div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}
+  dangerouslySetInnerHTML={{ __html: explanation
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/^## (.*)/gm, '<strong style="font-size:14px">$1</strong>')
+    .replace(/^--- >/gm, '')
+    .replace(/\n/g, '<br/>')
+  }}
+/>
                     </div>
                   )}
                 </div>

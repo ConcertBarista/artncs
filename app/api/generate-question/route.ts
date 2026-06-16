@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 };
 
   if (mode === 'summary') {
-    const text = await callAI(`다음은 NCS 문화예술경영 학습모듈 "${chapter.title}"의 내용입니다:\n\n${chapter.content}\n\n위 내용을 학습자가 이해하기 쉽게 아래 형식으로 요약해주세요. 마크다운 기호(**,##,|) 없이 일반 텍스트로만 작성하세요.\n\n[학습 목표]\n• (목표1)\n• (목표2)\n\n[핵심 개념]\n• (개념1): (설명)\n• (개념2): (설명)\n• (개념3): (설명)\n\n[반드시 기억할 포인트]\n① (포인트1)\n② (포인트2)\n③ (포인트3)`, 2000);
+    const text = await callAI(`다음은 NCS 문화예술경영 학습모듈 "${chapter.title}"의 내용입니다:\n\n${chapter.content}\n\n위 내용을 아래 형식으로 요약하세요. 반드시 이 형식을 그대로 따르고, 마크다운 기호(**,##) 없이 작성하세요. 표가 필요하면 | 기호를 사용하세요.\n\n[학습 목표]\n• 목표1\n• 목표2\n\n[핵심 개념]\n• 개념1: 설명\n• 개념2: 설명\n• 개념3: 설명\n• 개념4: 설명\n\n[주요 내용]\n내용에 표가 있으면 표로 정리하고, 단계나 절차가 있으면 번호 목록으로 정리하세요.\n\n[반드시 기억할 포인트]\n① 포인트1\n② 포인트2\n③ 포인트3`, 2000);
     return NextResponse.json({ text });
   }
 

@@ -163,13 +163,20 @@ if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#5b4fff', marginBottom: 10 }}>🤖 AI 학습 요약</div>
                 <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}>
   {summary.split('\n').map((line, i) => {
-    if (line.startsWith('[') && line.endsWith(']')) {
-      return <div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 14, marginBottom: 6, fontSize: 14 }}>{line}</div>;
+    const clean = line.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+    if (line.startsWith('# ') || line.startsWith('## ') || line.startsWith('### ')) {
+      const text = clean.replace(/^#+\s/, '');
+      return <div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 16, marginBottom: 6, fontSize: line.startsWith('# ') ? 15 : 14, borderBottom: line.startsWith('## ') ? '1px solid #e4e4f0' : 'none', paddingBottom: line.startsWith('## ') ? 4 : 0 }}>{text}</div>;
     }
-    if (line.startsWith('•') || line.startsWith('①') || line.startsWith('②') || line.startsWith('③')) {
-      return <div key={i} style={{ paddingLeft: 8, marginBottom: 4 }}>{line}</div>;
+    if (line.match(/^[-–]\s/)) {
+      return <div key={i} style={{ paddingLeft: 12, marginBottom: 4, display: 'flex', gap: 6 }}><span style={{ color: '#5b4fff', flexShrink: 0 }}>•</span><span>{clean.replace(/^[-–]\s/, '')}</span></div>;
     }
-    return <div key={i} style={{ marginBottom: 2 }}>{line}</div>;
+    if (line.match(/^\d+\.\s/)) {
+      return <div key={i} style={{ paddingLeft: 12, marginBottom: 4 }}>{clean}</div>;
+    }
+    if (line === '---' || line === '–––') return <hr key={i} style={{ border: 'none', borderTop: '1px solid #e4e4f0', margin: '10px 0' }} />;
+    if (!line.trim()) return <div key={i} style={{ height: 6 }} />;
+    return <div key={i} style={{ marginBottom: 4 }}>{clean}</div>;
   })}
 </div>
                 <button onClick={() => selectedChapter && loadSummary(selectedChapter)}

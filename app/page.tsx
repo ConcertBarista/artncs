@@ -240,7 +240,7 @@ if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
               {[['총 문제', score.total], ['정답', score.correct], ['정답률', score.total > 0 ? Math.round(score.correct/score.total*100)+'%' : '—']].map(([label, value]) => (
                 <div key={label as string} style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: 12, textAlign: 'center' }}>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{value}</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#2d2d4e' }}>{value}</div>
                   <div style={{ fontSize: 11, color: '#7a7a96', marginTop: 2 }}>{label}</div>
                 </div>
               ))}

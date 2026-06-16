@@ -184,10 +184,10 @@ if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
             <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '10px 0' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
-                  <tr>{headers.map((h, j) => <th key={j} style={{ background: '#f0f0f4', padding: '6px 10px', textAlign: 'left', borderBottom: '2px solid #e4e4f0', fontWeight: 700, color: '#0f0f1a' }}>{h.trim()}</th>)}</tr>
+                  <tr>{headers.map((h, j) => <th key={j} style={{ background: '#f0f0f4', padding: '6px 10px', textAlign: 'left', borderBottom: '2px solid #e4e4f0', fontWeight: 700, color: '#0f0f1a' }}>{h.trim().replace(/\*\*(.*?)\*\*/g, '$1')}</th>)}</tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, j) => <tr key={j}>{row.map((cell, k) => <td key={k} style={{ padding: '6px 10px', borderBottom: '1px solid #f0f0f4', color: '#3a3a52' }}>{cell.trim()}</td>)}</tr>)}
+                  {rows.map((row, j) => <tr key={j}>{row.map((cell, k) => <td key={k} style={{ padding: '6px 10px', borderBottom: '1px solid #f0f0f4', color: '#3a3a52' }}>{cell.trim().replace(/\*\*(.*?)\*\*/g, '$1')}</td>)}</tr>)}
                 </tbody>
               </table>
             </div>

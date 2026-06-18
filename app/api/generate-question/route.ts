@@ -6,12 +6,38 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const track = searchParams.get('track');
+  const moduleId = searchParams.get('moduleId');
+
+  if (moduleId) {
+    // 특정 모듈의 챕터 목록 반환
+    const { data } = await supabase
+      .from('chapters')
+      .select('id, title, order_num')
+      .eq('module_id', moduleId)
+      .order('order_num');
+    return NextResponse.json(data || []);
+  }
+
+  if (track) {
+    // 특정 트랙의 모듈 목록 반환
+    const { data } = await supabase
+      .from('modules')
+      .select('id, title, track, order_num')
+      .eq('track', track)
+      .order('order_num');
+    return NextResponse.json(data || []);
+  }
+
+  // 트랙 목록 반환
   const { data } = await supabase
-    .from('chapters')
-    .select('id, title, order_num')
-    .order('order_num');
-  return NextResponse.json(data || []);
+    .from('modules')
+    .select('track')
+    .order('track');
+  const tracks = [...new Set((data || []).map((d: {track: string}) => d.track))];
+  return NextResponse.json(tracks);
 }
 
 export async function POST(req: NextRequest) {

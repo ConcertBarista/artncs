@@ -6,7 +6,6 @@ import re
 
 SUPABASE_URL = 'https://ebkwxouncjozrihnsypf.supabase.co'
 
-# .env.local에서 키 읽기
 env = {}
 with open(os.path.expanduser('~/artncs/.env.local')) as f:
     for line in f:
@@ -17,10 +16,8 @@ with open(os.path.expanduser('~/artncs/.env.local')) as f:
 
 SERVICE_KEY = env.get('SUPABASE_SERVICE_KEY', '')
 
-# PDF 폴더 경로
 BASE_PATH = '/Users/konbapark/Desktop/# 강의자료/* NCS 자료'
 
-# 분야별 폴더명과 트랙 코드 매핑
 TRACKS = {
     '문화예술경영': 'M',
     '문화예술기획': 'P',
@@ -52,45 +49,67 @@ headers = {
     'Prefer': 'return=minimal'
 }
 
-def extract_chapters(pdf_path):
-    """PDF에서 챕터별로 텍스트 추출"""
-    chapters = []
-    current_title = None
-    current_text = []
+def find_toc_page(pdf):
+    """차례 페이지 찾기 - 1-1. 형태 패턴이 2개 이상 있는 페이지"""
+    for page_num in range(len(pdf.pages)):
+        text = pdf.pages[page_num].extract_text()
+        if not text:
+            continue
+        hits = re.findall(r'\d+-\d+\.', text)
+        if len(hits) >= 2:
+            return page_num, text
+    return None, None
+
+def parse_toc(toc_text):
+    """차례 텍스트에서 챕터 제목과 페이지 번호 추출"""
+    toc = []
+    # 패턴: 1-1. 제목 ... 숫자 또는 1-1. 제목 숫자
+    pattern = re.compile(r'^(\d+-\d+)\.\s+(.+?)\s+(\d+)\s*$', re.MULTILINE)
     
-    # 챕터 패턴: 1-1., 1-2., 2-1. 등
-    chapter_pattern = re.compile(r'^(\d+-\d+)\.\s+(.+)')
-    
-    with pdfplumber.open(pdf_path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if not text:
-                continue
-            
-            for line in text.split('\n'):
-                line = line.strip()
-                match = chapter_pattern.match(line)
-                if match:
-                    # 이전 챕터 저장
-                    if current_title and current_text:
-                        chapters.append({
-                            'title': current_title,
-                            'content': '\n'.join(current_text).strip()
-                        })
-                    current_title = line
-                    current_text = []
-                else:
-                    if current_title:
-                        current_text.append(line)
+    for match in pattern.finditer(toc_text):
+        chapter_num = match.group(1)
+        chapter_title = match.group(2).strip()
+        start_page = int(match.group(3))
         
-        # 마지막 챕터 저장
-        if current_title and current_text:
-            chapters.append({
-                'title': current_title,
-                'content': '\n'.join(current_text).strip()
-            })
+        # 교수학습방법, 평가, 참고자료 제외
+        skip_words = ['교수・학습', '• 평가', '참고 자료', '학습모듈의 개요']
+        if any(w in chapter_title for w in skip_words):
+            continue
+        
+        toc.append({
+            'num': chapter_num,
+            'title': f'{chapter_num}. {chapter_title}',
+            'start_page': start_page
+        })
     
-    return chapters
+    return toc
+
+def find_page_offset(pdf, toc_page_num):
+    """PDF 물리적 페이지와 문서 내 페이지 번호의 오프셋 계산"""
+    # 차례 다음 페이지들에서 페이지 번호 찾기
+    for page_num in range(toc_page_num + 1, min(toc_page_num + 5, len(pdf.pages))):
+        text = pdf.pages[page_num].extract_text()
+        if not text:
+            continue
+        lines = text.strip().split('\n')
+        for line in [lines[0], lines[-1]]:
+            line = line.strip()
+            if line.isdigit() and 1 <= int(line) <= 10:
+                doc_page = int(line)
+                offset = page_num - doc_page
+                return offset
+    return toc_page_num  # 기본값
+
+def extract_chapter_content(pdf, start_page, end_page, offset):
+    """페이지 범위의 텍스트 추출"""
+    texts = []
+    for page_num in range(len(pdf.pages)):
+        doc_page = page_num - offset
+        if start_page <= doc_page < end_page:
+            text = pdf.pages[page_num].extract_text()
+            if text:
+                texts.append(text)
+    return '\n'.join(texts)
 
 # 전체 처리
 for folder_name, track_code in TRACKS.items():
@@ -99,22 +118,18 @@ for folder_name, track_code in TRACKS.items():
         print(f'⚠️  폴더 없음: {folder_path}')
         continue
     
-    pdf_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.pdf')])
+    pdf_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.pdf') and not f.startswith('report')])
     
     for pdf_file in pdf_files:
-        # 파일명에서 번호 추출: 문화예술경영_01_경영전략수립.pdf
         parts = pdf_file.replace('.pdf', '').split('_')
         if len(parts) < 3:
-            print(f'⚠️  파일명 형식 오류: {pdf_file}')
             continue
         
-        num = parts[1]  # '01'
-        code = f'{track_code}{num}'  # 'M01'
+        num = parts[1]
+        code = f'{track_code}{num}'
         
-        # module_id 조회
         url = f'{SUPABASE_URL}/rest/v1/modules?code=eq.{code}&select=id'
         modules = supabase_get(url, headers)
-        
         if not modules:
             print(f'⚠️  모듈 없음: {code}')
             continue
@@ -124,38 +139,63 @@ for folder_name, track_code in TRACKS.items():
         
         print(f'\n📄 처리 중: {pdf_file} ({code})')
         
-        # 기존 챕터 삭제 (재업로드 방지)
-        del_req = urllib.request.Request(
-            f'{SUPABASE_URL}/rest/v1/chapters?module_id=eq.{module_id}',
-            headers={**headers, 'Content-Type': 'application/json'},
-            method='DELETE'
-        )
-        try:
-            with urllib.request.urlopen(del_req) as res:
-                pass
-        except:
-            pass
-        
-        # PDF 파싱
-        chapters = extract_chapters(pdf_path)
-        
-        if not chapters:
-            print(f'  ⚠️  챕터 추출 실패')
-            continue
-        
-        # 챕터 삽입
-        for i, ch in enumerate(chapters):
-            data = {
-                'module_id': module_id,
-                'title': ch['title'],
-                'order_num': i + 1,
-                'content': ch['content']
-            }
-            status = supabase_post(
-                f'{SUPABASE_URL}/rest/v1/chapters',
-                data, headers
+        with pdfplumber.open(pdf_path) as pdf:
+            # 차례 페이지 찾기
+            toc_page_num, toc_text = find_toc_page(pdf)
+            
+            if toc_page_num is None:
+                print(f'  ⚠️  차례 페이지 없음 - 건너뜀')
+                continue
+            
+            print(f'  📋 차례 페이지: {toc_page_num + 1}번째')
+            
+            # 차례 파싱
+            toc = parse_toc(toc_text)
+            
+            if not toc:
+                print(f'  ⚠️  차례 파싱 실패')
+                print(f'  차례 텍스트:\n{toc_text[:500]}')
+                continue
+            
+            print(f'  챕터 {len(toc)}개 발견:')
+            for t in toc:
+                print(f'    {t["title"]} (p.{t["start_page"]})')
+            
+            # 페이지 오프셋 계산
+            offset = find_page_offset(pdf, toc_page_num)
+            print(f'  페이지 오프셋: {offset}')
+            
+            # 기존 챕터 삭제
+            del_req = urllib.request.Request(
+                f'{SUPABASE_URL}/rest/v1/chapters?module_id=eq.{module_id}',
+                headers={**headers, 'Content-Type': 'application/json'},
+                method='DELETE'
             )
-            if status:
-                print(f'  ✅ {ch["title"]}')
+            try:
+                with urllib.request.urlopen(del_req) as res:
+                    pass
+            except:
+                pass
+            
+            # 각 챕터 내용 추출 및 삽입
+            for i, chapter in enumerate(toc):
+                start_page = chapter['start_page']
+                end_page = toc[i+1]['start_page'] if i+1 < len(toc) else 9999
+                
+                content = extract_chapter_content(pdf, start_page, end_page, offset)
+                
+                if len(content) < 100:
+                    print(f'  ⚠️  내용 부족: {chapter["title"]}')
+                    continue
+                
+                data = {
+                    'module_id': module_id,
+                    'title': chapter['title'],
+                    'order_num': i + 1,
+                    'content': content
+                }
+                status = supabase_post(f'{SUPABASE_URL}/rest/v1/chapters', data, headers)
+                if status:
+                    print(f'  ✅ {chapter["title"]}')
 
 print('\n\n🎉 전체 완료!')

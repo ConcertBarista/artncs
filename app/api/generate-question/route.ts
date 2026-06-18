@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       .from('chapters')
       .select('id, title, order_num')
       .eq('module_id', moduleId)
-      .order('order_num');
+      .order('title');
     return NextResponse.json(data || []);
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 
 interface Module {
   id: string;
@@ -25,9 +26,18 @@ interface Question {
   explanation_wrong: string;
 }
 
+interface User {
+  email?: string;
+  user_metadata?: {
+    full_name?: string;
+    avatar_url?: string;
+  };
+}
+
 const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정', '문화콘텐츠기획'];
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'learn' | 'quiz' | 'analysis'>('learn');
   const [selectedTrack, setSelectedTrack] = useState('문화예술경영');
   const [modules, setModules] = useState<Module[]>([]);
@@ -47,6 +57,17 @@ export default function Home() {
   const [history, setHistory] = useState<{ chapter: string; correct: boolean }[]>([]);
   const [streak, setStreak] = useState(0);
   const [usedTypes, setUsedTypes] = useState<string[]>([]);
+
+  // 로그인 체크
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (!data.user) {
+        window.location.href = '/login';
+      } else {
+        setUser(data.user);
+      }
+    });
+  }, []);
 
   // 트랙 변경 시 모듈 로드
   useEffect(() => {
@@ -140,14 +161,28 @@ export default function Home() {
     setSelectorOpen(false);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
   const s = { fontFamily: "'Apple SD Gothic Neo', sans-serif", background: '#f7f7fb', minHeight: '100vh' } as const;
+
+  if (!user) return null;
 
   return (
     <div style={s}>
       {/* Header */}
       <div style={{ background: '#0f0f1a', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ color: '#fff', fontSize: 18, fontWeight: 800 }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
-        <div style={{ background: 'rgba(91,79,255,0.2)', color: '#a99eff', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20 }}>문화예술 NCS</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ color: '#a99eff', fontSize: 11, fontWeight: 600 }}>
+            {user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''}
+          </div>
+          <div onClick={handleLogout} style={{ background: 'rgba(91,79,255,0.2)', color: '#a99eff', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, cursor: 'pointer' }}>
+            로그아웃
+          </div>
+        </div>
       </div>
 
       {/* 메인 탭 */}
@@ -164,7 +199,6 @@ export default function Home() {
         {/* 선택 영역: 펼침/접힘 */}
         {selectorOpen ? (
           <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 16, marginBottom: 16 }}>
-            {/* 분야 선택 */}
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>분야 선택</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -177,7 +211,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* 모듈 선택 */}
             {modules.length > 0 && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습모듈 선택</div>
@@ -192,7 +225,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* 챕터 선택 */}
             {chapters.length > 0 && (
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습 단원 선택</div>

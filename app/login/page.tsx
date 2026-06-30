@@ -7,20 +7,19 @@ const loginWithKakao = async () => {
   await supabase.auth.signInWithOAuth({
     provider: 'kakao',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
-      scopes: 'profile_nickname profile_image',
+      redirectTo: 'https://artncs.vercel.app/auth/callback',
     },
   });
 };
 
-  const loginWithGoogle = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  };
+const loginWithGoogle = async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://artncs.vercel.app/auth/callback',
+    },
+  });
+};
 
   const s = { fontFamily: "'Apple SD Gothic Neo', sans-serif", background: '#f7f7fb', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' } as const;
 

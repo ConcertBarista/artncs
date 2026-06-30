@@ -34,6 +34,7 @@ export default function Home() {
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
+  const [selectorOpen, setSelectorOpen] = useState(true);
   const [summary, setSummary] = useState('');
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
@@ -129,6 +130,16 @@ export default function Home() {
     setLoadingExplain(false);
   };
 
+  const selectChapterAndClose = (ch: Chapter) => {
+    setSelectedChapter(ch);
+    setSummary('');
+    setQuestion(null);
+    setSelectedOption(null);
+    setSubmitted(false);
+    setExplanation('');
+    setSelectorOpen(false);
+  };
+
   const s = { fontFamily: "'Apple SD Gothic Neo', sans-serif", background: '#f7f7fb', minHeight: '100vh' } as const;
 
   return (
@@ -150,46 +161,64 @@ export default function Home() {
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px 80px' }}>
 
-        {/* 트랙 선택 탭 */}
-        <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>분야 선택</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {TRACKS.map(track => (
-              <div key={track} onClick={() => setSelectedTrack(track)}
-                style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedTrack === track ? '#5b4fff' : '#e4e4f0'}`, background: selectedTrack === track ? '#5b4fff' : '#fff', color: selectedTrack === track ? '#fff' : '#666', cursor: 'pointer', fontWeight: selectedTrack === track ? 700 : 400 }}>
-                {track}
+        {/* 선택 영역: 펼침/접힘 */}
+        {selectorOpen ? (
+          <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+            {/* 분야 선택 */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>분야 선택</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {TRACKS.map(track => (
+                  <div key={track} onClick={() => setSelectedTrack(track)}
+                    style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedTrack === track ? '#5b4fff' : '#e4e4f0'}`, background: selectedTrack === track ? '#5b4fff' : '#fff', color: selectedTrack === track ? '#fff' : '#666', cursor: 'pointer', fontWeight: selectedTrack === track ? 700 : 400 }}>
+                    {track}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 모듈 선택 */}
-        {modules.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: '12px 16px', marginBottom: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습모듈 선택</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {modules.map(mod => (
-                <div key={mod.id} onClick={() => { setSelectedModule(mod); setSummary(''); setQuestion(null); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
-                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedModule?.id === mod.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedModule?.id === mod.id ? '#ede9ff' : '#fff', color: selectedModule?.id === mod.id ? '#5b4fff' : '#666', cursor: 'pointer', fontWeight: selectedModule?.id === mod.id ? 700 : 400 }}>
-                  {mod.title.replace('문화예술 ', '').replace('문화콘텐츠 ', '')}
-                </div>
-              ))}
             </div>
-          </div>
-        )}
 
-        {/* 챕터 선택 */}
-        {chapters.length > 0 && (
-          <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: '12px 16px', marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습 단원 선택</div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {chapters.map(ch => (
-                <div key={ch.id} onClick={() => { setSelectedChapter(ch); setSummary(''); setQuestion(null); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
-                  style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedChapter?.id === ch.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedChapter?.id === ch.id ? '#ede9ff' : '#fff', color: selectedChapter?.id === ch.id ? '#5b4fff' : '#666', cursor: 'pointer', fontWeight: selectedChapter?.id === ch.id ? 700 : 400 }}>
-                  {ch.title}
+            {/* 모듈 선택 */}
+            {modules.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습모듈 선택</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {modules.map(mod => (
+                    <div key={mod.id} onClick={() => { setSelectedModule(mod); setSummary(''); setQuestion(null); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
+                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedModule?.id === mod.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedModule?.id === mod.id ? '#ede9ff' : '#fff', color: selectedModule?.id === mod.id ? '#5b4fff' : '#666', cursor: 'pointer', fontWeight: selectedModule?.id === mod.id ? 700 : 400 }}>
+                      {mod.title.replace('문화예술 ', '').replace('문화콘텐츠 ', '')}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            )}
+
+            {/* 챕터 선택 */}
+            {chapters.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습 단원 선택</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {chapters.map(ch => (
+                    <div key={ch.id} onClick={() => selectChapterAndClose(ch)}
+                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedChapter?.id === ch.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedChapter?.id === ch.id ? '#ede9ff' : '#fff', color: selectedChapter?.id === ch.id ? '#5b4fff' : '#666', cursor: 'pointer', fontWeight: selectedChapter?.id === ch.id ? 700 : 400 }}>
+                      {ch.title}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div onClick={() => setSelectorOpen(true)}
+            style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: '10px 14px', marginBottom: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div style={{ fontSize: 12, color: '#3a3a52', display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
+              <span style={{ flexShrink: 0 }}>📍</span>
+              <span style={{ fontWeight: 600, color: '#5b4fff', flexShrink: 0 }}>{selectedTrack}</span>
+              <span style={{ color: '#ccc', flexShrink: 0 }}>›</span>
+              <span style={{ flexShrink: 0 }}>{selectedModule?.title.replace('문화예술 ', '').replace('문화콘텐츠 ', '')}</span>
+              <span style={{ color: '#ccc', flexShrink: 0 }}>›</span>
+              <span style={{ fontWeight: 700, color: '#0f0f1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedChapter?.title}</span>
             </div>
+            <span style={{ fontSize: 11, color: '#5b4fff', fontWeight: 700, flexShrink: 0, background: '#ede9ff', padding: '4px 10px', borderRadius: 20 }}>변경</span>
           </div>
         )}
 

@@ -34,7 +34,7 @@ interface User {
     full_name?: string;
     avatar_url?: string;
   };
-}ㄴ
+}
 
 const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정', '문화콘텐츠기획'];
 

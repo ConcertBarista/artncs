@@ -59,15 +59,21 @@ export default function Home() {
   const [usedTypes, setUsedTypes] = useState<string[]>([]);
 
   // 로그인 체크
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        window.location.href = '/login';
-      } else {
-        setUser(data.user);
+useEffect(() => {
+  supabase.auth.getUser().then(async ({ data }) => {
+    if (!data.user) {
+      // 로그인 안 되어있으면 게스트로 자동 로그인 (조용히, 버튼 없이)
+      const { data: anonData, error } = await supabase.auth.signInAnonymously();
+      if (error) {
+        console.error('게스트 로그인 실패:', error.message);
+        return;
       }
-    });
-  }, []);
+      setUser(anonData.user);
+    } else {
+      setUser(data.user);
+    }
+  });
+}, []);
 
   // 트랙 변경 시 모듈 로드
   useEffect(() => {
@@ -131,6 +137,17 @@ export default function Home() {
     setSubmitted(true);
     setLoadingExplain(true);
     const isCorrect = selectedOption === question.answer_index;
+
+// DB에 풀이 기록 저장
+    const { error: logError } = await supabase.from('quiz_logs').insert({
+      user_id: user?.id,
+      module_code: selectedModule?.id || '',
+      chapter_id: selectedChapter?.id,
+      topic: question.type,
+      is_correct: isCorrect,
+    });
+    if (logError) console.error('quiz_logs 저장 실패:', logError.message, logError);
+
     setScore(prev => ({ correct: prev.correct + (isCorrect ? 1 : 0), total: prev.total + 1 }));
     setHistory(prev => [...prev, { chapter: selectedChapter?.title || '', correct: isCorrect }]);
     setStreak(prev => isCorrect ? prev + 1 : prev - 1);

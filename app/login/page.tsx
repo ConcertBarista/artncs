@@ -4,21 +4,49 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
 const loginWithKakao = async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: 'kakao',
-    options: {
-      redirectTo: 'https://artncs.vercel.app/auth/callback',
-    },
-  });
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user?.is_anonymous) {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'kakao',
+      options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+    });
+    if (error) {
+      await supabase.auth.signOut();
+      await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+      });
+    }
+  } else {
+    await supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+    });
+  }
 };
 
 const loginWithGoogle = async () => {
-  await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: 'https://artncs.vercel.app/auth/callback',
-    },
-  });
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user?.is_anonymous) {
+    const { error } = await supabase.auth.linkIdentity({
+      provider: 'google',
+      options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+    });
+    if (error) {
+      await supabase.auth.signOut();
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+      });
+    }
+  } else {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+    });
+  }
 };
 
   const s = { fontFamily: "'Apple SD Gothic Neo', sans-serif", background: '#f7f7fb', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' } as const;

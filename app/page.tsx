@@ -34,7 +34,7 @@ interface User {
     full_name?: string;
     avatar_url?: string;
   };
-}
+}ㄴ
 
 const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정', '문화콘텐츠기획'];
 
@@ -59,6 +59,7 @@ export default function Home() {
   const [history, setHistory] = useState<{ chapter: string; correct: boolean }[]>([]);
   const [streak, setStreak] = useState(0);
   const [usedTypes, setUsedTypes] = useState<string[]>([]);
+  const [guestLimitReached, setGuestLimitReached] = useState(false);
 
   // 로그인 체크
 useEffect(() => {
@@ -103,6 +104,23 @@ useEffect(() => {
         setQuestion(null);
       });
   }, [selectedModule]);
+
+  // 게스트 챕터당 1문제 제한 확인
+  useEffect(() => {
+    if (!user || !selectedChapter) return;
+    if (!user.is_anonymous) {
+      setGuestLimitReached(false);
+      return;
+    }
+    supabase
+      .from('quiz_logs')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('chapter_id', selectedChapter.id)
+      .then(({ count }) => {
+        setGuestLimitReached((count ?? 0) >= 1);
+      });
+  }, [selectedChapter, user]);
 
   const loadSummary = async (chapter: Chapter) => {
     setLoadingSummary(true);
@@ -385,7 +403,18 @@ const handleLogout = async () => {
               ))}
             </div>
 
-            {!question && !loadingQuestion && (
+            {guestLimitReached && !question && (
+              <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>이 단원은 이미 체험하셨어요</div>
+                <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 16 }}>로그인하면 모든 단원의 문제를 제한 없이 풀 수 있어요</div>
+                <div onClick={() => window.location.href = '/login'}
+                  style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 24px', borderRadius: 20, cursor: 'pointer' }}>
+                  로그인하고 계속하기
+                </div>
+              </div>
+            )}
+
+            {!guestLimitReached && !question && !loadingQuestion && (
               <button onClick={loadQuestion}
                 style={{ width: '100%', padding: 14, background: '#5b4fff', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}>
                 🤖 AI 문제 생성하기 ({selectedChapter?.title})

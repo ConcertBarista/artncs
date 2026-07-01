@@ -33,6 +33,7 @@ interface User {
   user_metadata?: {
     full_name?: string;
     avatar_url?: string;
+    guest_summary_chapter_ids?: string[];
   };
 }
 
@@ -60,6 +61,7 @@ export default function Home() {
   const [streak, setStreak] = useState(0);
   const [usedTypes, setUsedTypes] = useState<string[]>([]);
   const [guestLimitReached, setGuestLimitReached] = useState(false);
+  const [guestSummaryLocked, setGuestSummaryLocked] = useState(false);
 
   // 로그인 체크
 useEffect(() => {
@@ -122,7 +124,26 @@ useEffect(() => {
       });
   }, [selectedChapter, user]);
 
+  useEffect(() => {
+    if (!user || !selectedChapter) return;
+    if (!user.is_anonymous) {
+      setGuestSummaryLocked(false);
+      return;
+    }
+    const viewedIds = user.user_metadata?.guest_summary_chapter_ids || [];
+    setGuestSummaryLocked(viewedIds.length >= 3 && !viewedIds.includes(selectedChapter.id));
+  }, [selectedChapter, user]);
+  
   const loadSummary = async (chapter: Chapter) => {
+    if (user?.is_anonymous) {
+      const viewedIds = user.user_metadata?.guest_summary_chapter_ids || [];
+      if (!viewedIds.includes(chapter.id) && viewedIds.length < 3) {
+        const { data } = await supabase.auth.updateUser({
+          data: { guest_summary_chapter_ids: [...viewedIds, chapter.id] },
+        });
+        if (data?.user) setUser(data.user as User);
+      }
+    }
     setLoadingSummary(true);
     setSummary('');
     const res = await fetch('/api/generate-question', {
@@ -315,12 +336,23 @@ const handleLogout = async () => {
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>AI가 핵심 내용을 요약해드립니다</div>
             </div>
 
-            {!summary && !loadingSummary && (
-              <button onClick={() => selectedChapter && loadSummary(selectedChapter)}
-                style={{ width: '100%', padding: 14, background: '#5b4fff', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}>
-                🤖 AI 학습 요약 생성하기
-              </button>
-            )}
+            {guestSummaryLocked && !summary && (
+  <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
+    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>모든 학습 요약은 로그인 후 확인 가능해요</div>
+    <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 16 }}>3개 단원까지 체험하셨어요, 더 보려면 로그인해주세요</div>
+    <div onClick={() => window.location.href = '/login'}
+      style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 24px', borderRadius: 20, cursor: 'pointer' }}>
+      로그인하고 계속하기
+    </div>
+  </div>
+)}
+
+{!guestSummaryLocked && !summary && !loadingSummary && (
+  <button onClick={() => selectedChapter && loadSummary(selectedChapter)}
+    style={{ width: '100%', padding: 14, background: '#5b4fff', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}>
+    🤖 AI 학습 요약 생성하기
+  </button>
+)}
 
             {loadingSummary && (
               <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: 24, textAlign: 'center' }}>

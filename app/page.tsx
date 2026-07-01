@@ -28,6 +28,7 @@ interface Question {
 
 interface User {
   id: string;
+  is_anonymous?: boolean;
   email?: string;
   user_metadata?: {
     full_name?: string;

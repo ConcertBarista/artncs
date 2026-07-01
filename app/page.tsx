@@ -179,9 +179,9 @@ useEffect(() => {
     setSelectorOpen(false);
   };
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.href = '/login';
+    window.location.href = '/';
   };
 
   const s = { fontFamily: "'Apple SD Gothic Neo', sans-serif", background: '#f7f7fb', minHeight: '100vh' } as const;

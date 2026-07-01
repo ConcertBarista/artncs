@@ -190,16 +190,25 @@ useEffect(() => {
 
   return (
     <div style={s}>
-      {/* Header */}
+ {/* Header */}
       <div style={{ background: '#0f0f1a', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ color: '#fff', fontSize: 18, fontWeight: 800 }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ color: '#a99eff', fontSize: 11, fontWeight: 600 }}>
-            {user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''}
-          </div>
-          <div onClick={handleLogout} style={{ background: 'rgba(91,79,255,0.2)', color: '#a99eff', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, cursor: 'pointer' }}>
-            로그아웃
-          </div>
+          {user?.is_anonymous ? (
+            <div onClick={() => window.location.href = '/login'}
+              style={{ background: '#5b4fff', color: '#fff', fontSize: 11, fontWeight: 700, padding: '6px 14px', borderRadius: 20, cursor: 'pointer' }}>
+              로그인
+            </div>
+          ) : (
+            <>
+              <div style={{ color: '#a99eff', fontSize: 11, fontWeight: 600 }}>
+                {user?.user_metadata?.full_name || user?.email?.split('@')[0] || ''}
+              </div>
+              <div onClick={handleLogout} style={{ background: 'rgba(91,79,255,0.2)', color: '#a99eff', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, cursor: 'pointer' }}>
+                로그아웃
+              </div>
+            </>
+          )}
         </div>
       </div>
 

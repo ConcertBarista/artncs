@@ -172,6 +172,7 @@ useEffect(() => {
     setHistory(prev => [...prev, { chapter: selectedChapter?.title || '', correct: isCorrect }]);
     setStreak(prev => isCorrect ? prev + 1 : prev - 1);
     if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('/api/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -181,10 +182,15 @@ useEffect(() => {
         isCorrect,
         question: question.question,
         correctAnswer: question.options[question.answer_index],
+        accessToken: session?.access_token,
       }),
     });
     const data = await res.json();
-    setExplanation(data.text || '');
+    if (data.locked) {
+      setExplanation('LOCKED');
+    } else {
+      setExplanation(data.text || '');
+    }
     setLoadingExplain(false);
   };
 
@@ -468,6 +474,17 @@ const handleLogout = async () => {
                     {loadingExplain ? (
                       <div style={{ display: 'flex', gap: 5 }}>
                         {[0,1,2].map(i => <div key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: '#5b4fff', animation: `bounce 1.1s ${i*0.18}s infinite` }} />)}
+                      </div>
+                    ) : explanation === 'LOCKED' ? (
+                      <div>
+                        <span style={{ fontWeight: 700, color: selectedOption === question.answer_index ? '#00c896' : '#ff4d6d' }}>{selectedOption === question.answer_index ? '✅ 정답' : '❌ 오답'}</span>
+                        <div style={{ marginTop: 12, padding: 14, background: '#fff', border: '1px dashed #d4caff', borderRadius: 8, textAlign: 'center' }}>
+                          <div style={{ fontSize: 13, color: '#5b4fff', fontWeight: 700, marginBottom: 8 }}>🔒 상세 해설은 로그인 후 확인 가능해요</div>
+                          <div onClick={() => window.location.href = '/login'}
+                            style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 12, fontWeight: 700, padding: '8px 18px', borderRadius: 20, cursor: 'pointer' }}>
+                            로그인하고 해설 보기
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}>

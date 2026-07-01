@@ -41,7 +41,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { mode, chapterId, isCorrect, question, correctAnswer, streak, usedTypes } = await req.json();
+  const { mode, chapterId, isCorrect, question, correctAnswer, streak, usedTypes, accessToken } = await req.json();
+
+  let isAnonymousUser = true;
+  if (accessToken) {
+    const { data: { user } } = await supabase.auth.getUser(accessToken);
+    isAnonymousUser = user?.is_anonymous ?? true;
+  }
 
   const { data: chapter } = await supabase
     .from('chapters')
@@ -117,6 +123,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (mode === 'explain') {
+    if (isAnonymousUser) {
+      return NextResponse.json({ locked: true });
+    }
     const prompt = isCorrect
       ? `NCS 문화예술경영 시험 문제 "${question}"에서 정답 "${correctAnswer}"을 맞혔습니다. 왜 정답인지 실제 문화재단 현장 맥락을 담아 2-3문장으로 설명해주세요. 마크다운 없이 일반 텍스트로 작성하세요.`
       : `NCS 문화예술경영 시험 문제 "${question}"에서 오답을 선택했습니다. 정답은 "${correctAnswer}"입니다. 왜 정답인지 문화재단 현장 사례를 담아 2-3문장으로 친절하게 설명해주세요. 마크다운 없이 일반 텍스트로 작성하세요.`;

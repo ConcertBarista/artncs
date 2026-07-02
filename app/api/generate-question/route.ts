@@ -41,12 +41,47 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { mode, chapterId, isCorrect, question, correctAnswer, streak, usedTypes, accessToken } = await req.json();
+  const { mode, chapterId, isCorrect, question, correctAnswer, streak, usedTypes, accessToken, level, type, difficulty } = await req.json();
 
   let isAnonymousUser = true;
   if (accessToken) {
     const { data: { user } } = await supabase.auth.getUser(accessToken);
     isAnonymousUser = user?.is_anonymous ?? true;
+  }
+
+  if (mode === 'cached_summary') {
+    const { data } = await supabase
+      .from('chapter_summaries')
+      .select('content')
+      .eq('chapter_id', chapterId)
+      .eq('level', level)
+      .eq('is_active', true)
+      .maybeSingle();
+    return NextResponse.json({ text: data?.content || '' });
+  }
+
+  if (mode === 'cached_question') {
+    const { data: rows } = await supabase
+      .from('chapter_questions')
+      .select('id, question_data')
+      .eq('chapter_id', chapterId)
+      .eq('type', type)
+      .eq('difficulty', difficulty)
+      .eq('is_active', true);
+
+    if (!rows || rows.length === 0) {
+      return NextResponse.json({ error: '문제를 찾을 수 없습니다' });
+    }
+
+    const picked = rows[Math.floor(Math.random() * rows.length)];
+    const q = picked.question_data;
+
+    if (isAnonymousUser) {
+      const { explanation_correct, explanation_wrong, ...rest } = q;
+      return NextResponse.json({ ...rest, locked: true });
+    }
+
+    return NextResponse.json({ ...q, locked: false });
   }
 
   const { data: chapter } = await supabase

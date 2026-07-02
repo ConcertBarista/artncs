@@ -22,8 +22,9 @@ interface Question {
   question: string;
   options: string[];
   answer_index: number;
-  explanation_correct: string;
-  explanation_wrong: string;
+  explanation_correct?: string;
+  explanation_wrong?: string;
+  locked?: boolean;
 }
 
 interface User {
@@ -39,6 +40,16 @@ interface User {
 
 const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정', '문화콘텐츠기획'];
 const OPEN_TRACKS = ['문화예술경영'];
+const SUMMARY_LEVELS: { key: 'detailed' | 'summary' | 'keyword'; label: string }[] = [
+  { key: 'detailed', label: '상세' },
+  { key: 'summary', label: '요약' },
+  { key: 'keyword', label: '키워드' },
+];
+const DIFFICULTIES: { key: string; label: string }[] = [
+  { key: 'easy', label: '기본' },
+  { key: 'medium', label: '중급' },
+  { key: 'hard', label: '심화' },
+];
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -50,9 +61,11 @@ export default function Home() {
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(true);
   const [summary, setSummary] = useState('');
+  const [summaryLevel, setSummaryLevel] = useState<'detailed' | 'summary' | 'keyword' | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
   const [loadingQuestion, setLoadingQuestion] = useState(false);
+  const [manualDifficulty, setManualDifficulty] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [explanation, setExplanation] = useState('');
@@ -65,21 +78,20 @@ export default function Home() {
   const [guestSummaryLocked, setGuestSummaryLocked] = useState(false);
 
   // 로그인 체크
-useEffect(() => {
-  supabase.auth.getUser().then(async ({ data }) => {
-    if (!data.user) {
-      // 로그인 안 되어있으면 게스트로 자동 로그인 (조용히, 버튼 없이)
-      const { data: anonData, error } = await supabase.auth.signInAnonymously();
-      if (error) {
-        console.error('게스트 로그인 실패:', error.message);
-        return;
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) {
+        const { data: anonData, error } = await supabase.auth.signInAnonymously();
+        if (error) {
+          console.error('게스트 로그인 실패:', error.message);
+          return;
+        }
+        setUser(anonData.user);
+      } else {
+        setUser(data.user);
       }
-      setUser(anonData.user);
-    } else {
-      setUser(data.user);
-    }
-  });
-}, []);
+    });
+  }, []);
 
   // 트랙 변경 시 모듈 로드
   useEffect(() => {
@@ -91,6 +103,7 @@ useEffect(() => {
         setChapters([]);
         setSelectedChapter(null);
         setSummary('');
+        setSummaryLevel(null);
         setQuestion(null);
       });
   }, [selectedTrack]);
@@ -104,6 +117,7 @@ useEffect(() => {
         setChapters(data);
         setSelectedChapter(data[0] || null);
         setSummary('');
+        setSummaryLevel(null);
         setQuestion(null);
       });
   }, [selectedModule]);
@@ -125,6 +139,7 @@ useEffect(() => {
       });
   }, [selectedChapter, user]);
 
+  // 게스트 학습요약 잠금 확인 (최대 3개 챕터까지 허용)
   useEffect(() => {
     if (!user || !selectedChapter) return;
     if (!user.is_anonymous) {
@@ -134,8 +149,8 @@ useEffect(() => {
     const viewedIds = user.user_metadata?.guest_summary_chapter_ids || [];
     setGuestSummaryLocked(viewedIds.length >= 3 && !viewedIds.includes(selectedChapter.id));
   }, [selectedChapter, user]);
-  
-  const loadSummary = async (chapter: Chapter) => {
+
+  const loadSummary = async (chapter: Chapter, level: 'detailed' | 'summary' | 'keyword') => {
     if (user?.is_anonymous) {
       const viewedIds = user.user_metadata?.guest_summary_chapter_ids || [];
       if (!viewedIds.includes(chapter.id) && viewedIds.length < 3) {
@@ -143,31 +158,53 @@ useEffect(() => {
           data: { guest_summary_chapter_ids: [...viewedIds, chapter.id] },
         });
         if (data?.user) setUser(data.user as User);
+      } else if (guestSummaryLocked) {
+        return;
       }
     }
     setLoadingSummary(true);
+    setSummaryLevel(level);
     setSummary('');
     const res = await fetch('/api/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'summary', chapterId: chapter.id }),
+      body: JSON.stringify({ mode: 'cached_summary', chapterId: chapter.id, level }),
     });
     const data = await res.json();
     setSummary(data.text || '');
     setLoadingSummary(false);
   };
 
-  const loadQuestion = async () => {
+  const getRecommendedDifficulty = () => {
+    if (streak >= 4) return 'hard';
+    if (streak >= 2) return 'medium';
+    return 'easy';
+  };
+
+  const loadQuestion = async (difficulty: string) => {
     if (!selectedChapter) return;
+    setManualDifficulty(difficulty);
     setLoadingQuestion(true);
     setQuestion(null);
     setSelectedOption(null);
     setSubmitted(false);
     setExplanation('');
+
+    const allTypes = ['개념정의', '적용', '틀린것고르기', '빈칸채우기'];
+    const availableTypes = allTypes.filter(t => !usedTypes.slice(-2).includes(t));
+    const nextType = availableTypes[Math.floor(Math.random() * availableTypes.length)] || allTypes[0];
+
+    const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch('/api/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'question', chapterId: selectedChapter.id, streak, usedTypes }),
+      body: JSON.stringify({
+        mode: 'cached_question',
+        chapterId: selectedChapter.id,
+        type: nextType,
+        difficulty,
+        accessToken: session?.access_token,
+      }),
     });
     const data = await res.json();
     setQuestion(data);
@@ -180,7 +217,7 @@ useEffect(() => {
     setLoadingExplain(true);
     const isCorrect = selectedOption === question.answer_index;
 
-// DB에 풀이 기록 저장
+    // DB에 풀이 기록 저장
     const { error: logError } = await supabase.from('quiz_logs').insert({
       user_id: user?.id,
       module_code: selectedModule?.id || '',
@@ -194,24 +231,11 @@ useEffect(() => {
     setHistory(prev => [...prev, { chapter: selectedChapter?.title || '', correct: isCorrect }]);
     setStreak(prev => isCorrect ? prev + 1 : prev - 1);
     if (question) setUsedTypes(prev => [...prev.slice(-4), question.type]);
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch('/api/generate-question', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        mode: 'explain',
-        chapterId: selectedChapter?.id,
-        isCorrect,
-        question: question.question,
-        correctAnswer: question.options[question.answer_index],
-        accessToken: session?.access_token,
-      }),
-    });
-    const data = await res.json();
-    if (data.locked) {
+
+    if (question.locked) {
       setExplanation('LOCKED');
     } else {
-      setExplanation(data.text || '');
+      setExplanation((isCorrect ? question.explanation_correct : question.explanation_wrong) || '');
     }
     setLoadingExplain(false);
   };
@@ -219,14 +243,17 @@ useEffect(() => {
   const selectChapterAndClose = (ch: Chapter) => {
     setSelectedChapter(ch);
     setSummary('');
+    setSummaryLevel(null);
     setQuestion(null);
     setSelectedOption(null);
     setSubmitted(false);
     setExplanation('');
+    setManualDifficulty(null);
+    setStreak(0);
     setSelectorOpen(false);
   };
 
-const handleLogout = async () => {
+  const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
   };
@@ -237,7 +264,7 @@ const handleLogout = async () => {
 
   return (
     <div style={s}>
- {/* Header */}
+      {/* Header */}
       <div style={{ background: '#0f0f1a', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ color: '#fff', fontSize: 18, fontWeight: 800 }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -294,7 +321,7 @@ const handleLogout = async () => {
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습모듈 선택</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {modules.map(mod => (
-                    <div key={mod.id} onClick={() => { setSelectedModule(mod); setSummary(''); setQuestion(null); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
+                    <div key={mod.id} onClick={() => { setSelectedModule(mod); setSummary(''); setSummaryLevel(null); setQuestion(null); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
                       style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedModule?.id === mod.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedModule?.id === mod.id ? '#ede9ff' : '#fff', color: selectedModule?.id === mod.id ? '#5b4fff' : '#666', cursor: 'pointer', fontWeight: selectedModule?.id === mod.id ? 700 : 400 }}>
                       {mod.title.replace('문화예술 ', '').replace('문화콘텐츠 ', '')}
                     </div>
@@ -338,37 +365,41 @@ const handleLogout = async () => {
             <div style={{ background: '#0f0f1a', borderRadius: 12, padding: '24px 20px', marginBottom: 16, color: '#fff' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>{selectedTrack} · NCS 학습모듈</div>
               <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>{selectedChapter?.title || '단원을 선택해주세요'}</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>AI가 핵심 내용을 요약해드립니다</div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>원하는 요약 단계를 선택해주세요</div>
             </div>
 
-            {guestSummaryLocked && !summary && (
-  <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
-    <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>모든 학습 요약은 로그인 후 확인 가능해요</div>
-    <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 16 }}>3개 단원까지 체험하셨어요, 더 보려면 로그인해주세요</div>
-    <div onClick={() => window.location.href = '/login'}
-      style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 24px', borderRadius: 20, cursor: 'pointer' }}>
-      로그인하고 계속하기
-    </div>
-  </div>
-)}
+            {guestSummaryLocked && (
+              <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>모든 학습 요약은 로그인 후 확인 가능해요</div>
+                <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 16 }}>3개 단원까지 체험하셨어요, 더 보려면 로그인해주세요</div>
+                <div onClick={() => window.location.href = '/login'}
+                  style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 24px', borderRadius: 20, cursor: 'pointer' }}>
+                  로그인하고 계속하기
+                </div>
+              </div>
+            )}
 
-{!guestSummaryLocked && !summary && !loadingSummary && (
-  <button onClick={() => selectedChapter && loadSummary(selectedChapter)}
-    style={{ width: '100%', padding: 14, background: '#5b4fff', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}>
-    🤖 AI 학습 요약 생성하기
-  </button>
-)}
+            {!guestSummaryLocked && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                {SUMMARY_LEVELS.map(lv => (
+                  <div key={lv.key} onClick={() => selectedChapter && loadSummary(selectedChapter, lv.key)}
+                    style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: `1.5px solid ${summaryLevel === lv.key ? '#5b4fff' : '#e4e4f0'}`, background: summaryLevel === lv.key ? '#5b4fff' : '#fff', color: summaryLevel === lv.key ? '#fff' : '#666' }}>
+                    {lv.label}
+                  </div>
+                ))}
+              </div>
+            )}
 
             {loadingSummary && (
               <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: 24, textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginBottom: 8 }}>
                   {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#5b4fff', animation: `bounce 1.1s ${i*0.18}s infinite` }} />)}
                 </div>
-                <div style={{ fontSize: 13, color: '#999' }}>AI가 학습 내용을 분석 중입니다...</div>
+                <div style={{ fontSize: 13, color: '#999' }}>불러오는 중입니다...</div>
               </div>
             )}
 
-            {summary && (
+            {summary && !loadingSummary && (
               <div style={{ background: '#fff', border: '1px solid #e4e4f0', borderRadius: 12, padding: 18, marginBottom: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: '#5b4fff', marginBottom: 10 }}>🤖 AI 학습 요약</div>
                 <div style={{ fontSize: 13, color: '#3a3a52', lineHeight: 1.85 }}>
@@ -420,10 +451,6 @@ const handleLogout = async () => {
                     return result;
                   })()}
                 </div>
-                <button onClick={() => selectedChapter && loadSummary(selectedChapter)}
-                  style={{ marginTop: 12, padding: '8px 16px', background: 'transparent', border: '1.5px solid #5b4fff', color: '#5b4fff', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                  🔄 다시 요약하기
-                </button>
               </div>
             )}
 
@@ -457,11 +484,24 @@ const handleLogout = async () => {
               </div>
             )}
 
-            {!guestLimitReached && !question && !loadingQuestion && (
-              <button onClick={loadQuestion}
-                style={{ width: '100%', padding: 14, background: '#5b4fff', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 12 }}>
-                🤖 AI 문제 생성하기 ({selectedChapter?.title})
-              </button>
+            {!guestLimitReached && !loadingQuestion && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: '#7a7a96', marginBottom: 6 }}>
+                  난이도 선택 {!manualDifficulty && `(추천: ${DIFFICULTIES.find(d => d.key === getRecommendedDifficulty())?.label})`}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {DIFFICULTIES.map(d => {
+                    const isRecommended = !manualDifficulty && d.key === getRecommendedDifficulty();
+                    const isActive = manualDifficulty === d.key || isRecommended;
+                    return (
+                      <div key={d.key} onClick={() => loadQuestion(d.key)}
+                        style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: `1.5px solid ${isActive ? '#5b4fff' : '#e4e4f0'}`, background: isActive ? '#5b4fff' : '#fff', color: isActive ? '#fff' : '#666' }}>
+                        {d.label}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
 
             {loadingQuestion && (
@@ -469,7 +509,7 @@ const handleLogout = async () => {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 5, marginBottom: 8 }}>
                   {[0,1,2].map(i => <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: '#5b4fff', animation: `bounce 1.1s ${i*0.18}s infinite` }} />)}
                 </div>
-                <div style={{ fontSize: 13, color: '#999' }}>AI가 문제를 생성 중입니다...</div>
+                <div style={{ fontSize: 13, color: '#999' }}>문제를 불러오는 중입니다...</div>
               </div>
             )}
 
@@ -533,7 +573,7 @@ const handleLogout = async () => {
                   </div>
                 )}
                 {submitted && (
-                  <button onClick={loadQuestion}
+                  <button onClick={() => loadQuestion(manualDifficulty || getRecommendedDifficulty())}
                     style={{ width: '100%', padding: 13, background: '#5b4fff', color: '#fff', border: 'none', borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', marginTop: 8 }}>
                     다음 문제 →
                   </button>

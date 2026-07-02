@@ -40,6 +40,7 @@ interface User {
 
 const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정', '문화콘텐츠기획'];
 const OPEN_TRACKS = ['문화예술경영'];
+const OPEN_MODULES = ['문화예술 경영전략수립'];
 const SUMMARY_LEVELS: { key: 'detailed' | 'summary' | 'keyword'; label: string }[] = [
   { key: 'detailed', label: '상세' },
   { key: 'summary', label: '요약' },
@@ -75,6 +76,7 @@ export default function Home() {
   const [streak, setStreak] = useState(0);
   const [usedTypes, setUsedTypes] = useState<string[]>([]);
   const [guestLimitReached, setGuestLimitReached] = useState(false);
+  const [questionError, setQuestionError] = useState('');
   const [guestSummaryLocked, setGuestSummaryLocked] = useState(false);
 
   // 로그인 체크
@@ -186,6 +188,7 @@ export default function Home() {
     setManualDifficulty(difficulty);
     setLoadingQuestion(true);
     setQuestion(null);
+    setQuestionError('');
     setSelectedOption(null);
     setSubmitted(false);
     setExplanation('');
@@ -207,7 +210,13 @@ export default function Home() {
       }),
     });
     const data = await res.json();
-    setQuestion(data);
+    if (data.error) {
+      setQuestionError(data.error);
+      setQuestion(null);
+    } else {
+      setQuestionError('');
+      setQuestion(data);
+    }
     setLoadingQuestion(false);
   };
 
@@ -320,12 +329,16 @@ export default function Home() {
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>학습모듈 선택</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {modules.map(mod => (
-                    <div key={mod.id} onClick={() => { setSelectedModule(mod); setSummary(''); setSummaryLevel(null); setQuestion(null); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
-                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedModule?.id === mod.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedModule?.id === mod.id ? '#ede9ff' : '#fff', color: selectedModule?.id === mod.id ? '#5b4fff' : '#666', cursor: 'pointer', fontWeight: selectedModule?.id === mod.id ? 700 : 400 }}>
-                      {mod.title.replace('문화예술 ', '').replace('문화콘텐츠 ', '')}
-                    </div>
-                  ))}
+                  {modules.map(mod => {
+                    const isModuleOpen = OPEN_MODULES.includes(mod.title);
+                    return (
+                      <div key={mod.id} onClick={() => { if (!isModuleOpen) return; setSelectedModule(mod); setSummary(''); setSummaryLevel(null); setQuestion(null); setQuestionError(''); setSelectedOption(null); setSubmitted(false); setExplanation(''); }}
+                        style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedModule?.id === mod.id ? '#5b4fff' : '#e4e4f0'}`, background: selectedModule?.id === mod.id ? '#ede9ff' : '#fff', color: !isModuleOpen ? '#ccc' : selectedModule?.id === mod.id ? '#5b4fff' : '#666', cursor: isModuleOpen ? 'pointer' : 'not-allowed', fontWeight: selectedModule?.id === mod.id ? 700 : 400, opacity: isModuleOpen ? 1 : 0.6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {mod.title.replace('문화예술 ', '').replace('문화콘텐츠 ', '')}
+                        {!isModuleOpen && <span style={{ fontSize: 9 }}>준비중</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -501,6 +514,13 @@ export default function Home() {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {questionError && !loadingQuestion && (
+              <div style={{ background: '#fff', border: '1px solid #ffd1d1', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
+                <div style={{ fontSize: 13, color: '#ff4d6d', fontWeight: 700, marginBottom: 4 }}>아직 이 난이도의 문제가 준비되지 않았어요</div>
+                <div style={{ fontSize: 12, color: '#999' }}>다른 난이도를 선택해보세요</div>
               </div>
             )}
 

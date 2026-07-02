@@ -38,6 +38,7 @@ interface User {
 }
 
 const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정', '문화콘텐츠기획'];
+const OPEN_TRACKS = ['문화예술경영'];
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -275,12 +276,16 @@ const handleLogout = async () => {
             <div style={{ marginBottom: 14 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>분야 선택</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {TRACKS.map(track => (
-                  <div key={track} onClick={() => setSelectedTrack(track)}
-                    style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedTrack === track ? '#5b4fff' : '#e4e4f0'}`, background: selectedTrack === track ? '#5b4fff' : '#fff', color: selectedTrack === track ? '#fff' : '#666', cursor: 'pointer', fontWeight: selectedTrack === track ? 700 : 400 }}>
-                    {track}
-                  </div>
-                ))}
+                {TRACKS.map(track => {
+                  const isOpen = OPEN_TRACKS.includes(track);
+                  return (
+                    <div key={track} onClick={() => isOpen && setSelectedTrack(track)}
+                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 20, border: `1.5px solid ${selectedTrack === track ? '#5b4fff' : '#e4e4f0'}`, background: selectedTrack === track ? '#5b4fff' : '#fff', color: !isOpen ? '#ccc' : selectedTrack === track ? '#fff' : '#666', cursor: isOpen ? 'pointer' : 'not-allowed', fontWeight: selectedTrack === track ? 700 : 400, opacity: isOpen ? 1 : 0.6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      {track}
+                      {!isOpen && <span style={{ fontSize: 9 }}>준비중</span>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

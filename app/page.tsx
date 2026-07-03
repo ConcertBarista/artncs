@@ -275,7 +275,7 @@ export default function Home() {
     <div style={s}>
       {/* Header */}
       <div style={{ background: '#0f0f1a', padding: '0 20px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ color: '#fff', fontSize: 18, fontWeight: 800 }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
+        <div onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: 18, fontWeight: 800, cursor: 'pointer' }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {user?.is_anonymous ? (
             <div onClick={() => window.location.href = '/login'}

@@ -78,6 +78,7 @@ export default function Home() {
   const [guestLimitReached, setGuestLimitReached] = useState(false);
   const [questionError, setQuestionError] = useState('');
   const [guestSummaryLocked, setGuestSummaryLocked] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // 로그인 체크
   useEffect(() => {
@@ -278,6 +279,48 @@ export default function Home() {
     setSelectorOpen(false);
   };
 
+  const loginWithKakao = async () => {
+    if (user?.is_anonymous) {
+      const { error } = await supabase.auth.linkIdentity({
+        provider: 'kakao',
+        options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+      });
+      if (error) {
+        await supabase.auth.signOut();
+        await supabase.auth.signInWithOAuth({
+          provider: 'kakao',
+          options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+        });
+      }
+    } else {
+      await supabase.auth.signInWithOAuth({
+        provider: 'kakao',
+        options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+      });
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    if (user?.is_anonymous) {
+      const { error } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+      });
+      if (error) {
+        await supabase.auth.signOut();
+        await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+        });
+      }
+    } else {
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: 'https://artncs.vercel.app/auth/callback' },
+      });
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
@@ -294,7 +337,7 @@ export default function Home() {
         <div onClick={() => window.location.href = '/'} style={{ color: '#fff', fontSize: 18, fontWeight: 800, cursor: 'pointer' }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {user?.is_anonymous ? (
-            <div onClick={() => window.location.href = '/login'}
+            <div onClick={() => setShowLoginModal(true)}
               style={{ background: '#5b4fff', color: '#fff', fontSize: 11, fontWeight: 700, padding: '6px 14px', borderRadius: 20, cursor: 'pointer' }}>
               로그인
             </div>
@@ -401,7 +444,7 @@ export default function Home() {
               <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>모든 학습 요약은 로그인 후 확인 가능해요</div>
                 <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 16 }}>3개 단원까지 체험하셨어요, 더 보려면 로그인해주세요</div>
-                <div onClick={() => window.location.href = '/login'}
+                <div onClick={() => setShowLoginModal(true)}
                   style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 24px', borderRadius: 20, cursor: 'pointer' }}>
                   로그인하고 계속하기
                 </div>
@@ -506,7 +549,7 @@ export default function Home() {
               <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>이 단원은 이미 체험하셨어요</div>
                 <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 16 }}>로그인하면 모든 단원의 문제를 제한 없이 풀 수 있어요</div>
-                <div onClick={() => window.location.href = '/login'}
+                <div onClick={() => setShowLoginModal(true)}
                   style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 13, fontWeight: 700, padding: '10px 24px', borderRadius: 20, cursor: 'pointer' }}>
                   로그인하고 계속하기
                 </div>
@@ -593,7 +636,7 @@ export default function Home() {
                         <span style={{ fontWeight: 700, color: selectedOption === question.answer_index ? '#00c896' : '#ff4d6d' }}>{selectedOption === question.answer_index ? '✅ 정답' : '❌ 오답'}</span>
                         <div style={{ marginTop: 12, padding: 14, background: '#fff', border: '1px dashed #d4caff', borderRadius: 8, textAlign: 'center' }}>
                           <div style={{ fontSize: 13, color: '#5b4fff', fontWeight: 700, marginBottom: 8 }}>🔒 상세 해설은 로그인 후 확인 가능해요</div>
-                          <div onClick={() => window.location.href = '/login'}
+                          <div onClick={() => setShowLoginModal(true)}
                             style={{ display: 'inline-block', background: '#5b4fff', color: '#fff', fontSize: 12, fontWeight: 700, padding: '8px 18px', borderRadius: 20, cursor: 'pointer' }}>
                             로그인하고 해설 보기
                           </div>
@@ -656,7 +699,30 @@ export default function Home() {
           </div>
         )}
       </div>
+      {showLoginModal && (
+        <div onClick={() => setShowLoginModal(false)}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,15,26,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 20, padding: '36px 28px', maxWidth: 360, width: '100%', textAlign: 'center', position: 'relative' }}>
+            <div onClick={() => setShowLoginModal(false)}
+              style={{ position: 'absolute', top: 16, right: 16, cursor: 'pointer', color: '#ccc', fontSize: 18 }}>✕</div>
+            <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 6 }}>Art<span style={{ color: '#5b4fff' }}>NCS</span></div>
+            <div style={{ fontSize: 13, color: '#7a7a96', marginBottom: 24 }}>문화예술 NCS 학습 플랫폼</div>
+            <div onClick={loginWithKakao}
+              style={{ background: '#fee500', padding: '13px 0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', marginBottom: 10 }}>
+              💬 카카오로 시작하기
+            </div>
+            <div onClick={loginWithGoogle}
+              style={{ background: '#fff', border: '1px solid #e4e4f0', padding: '13px 0', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+              G 구글로 시작하기
+            </div>
+            <div style={{ fontSize: 11, color: '#bbb', marginTop: 20 }}>로그인 시 이용약관 및 개인정보처리방침에 동의하게 됩니다.</div>
+          </div>
+        </div>
+      )}
       <style>{`@keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-7px)} }`}</style>
     </div>
+  );
+}
   );
 }

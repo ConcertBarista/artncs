@@ -152,6 +152,22 @@ export default function Home() {
     setGuestSummaryLocked(viewedIds.length >= 3 && !viewedIds.includes(selectedChapter.id));
   }, [selectedChapter, user]);
 
+  // 클릭 최소화: 학습하기 탭 진입 시 자동으로 기본 요약 불러오기
+  useEffect(() => {
+    if (activeTab !== 'learn') return;
+    if (!selectedChapter || guestSummaryLocked) return;
+    if (summary || loadingSummary) return;
+    loadSummary(selectedChapter, summaryLevel || 'summary');
+  }, [activeTab, selectedChapter, guestSummaryLocked]);
+
+  // 클릭 최소화: 문제풀기 탭 진입 시 자동으로 문제 불러오기
+  useEffect(() => {
+    if (activeTab !== 'quiz') return;
+    if (!selectedChapter || guestLimitReached) return;
+    if (question || loadingQuestion) return;
+    loadQuestion(manualDifficulty || getRecommendedDifficulty());
+  }, [activeTab, selectedChapter, guestLimitReached]);
+
   const loadSummary = async (chapter: Chapter, level: 'detailed' | 'summary' | 'keyword') => {
     if (user?.is_anonymous) {
       const viewedIds = user.user_metadata?.guest_summary_chapter_ids || [];

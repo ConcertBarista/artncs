@@ -52,12 +52,12 @@ export async function POST(req: NextRequest) {
   if (mode === 'cached_summary') {
     const { data } = await supabase
       .from('chapter_summaries')
-      .select('content')
+      .select('content, highlight_terms')
       .eq('chapter_id', chapterId)
       .eq('level', level)
       .eq('is_active', true)
       .maybeSingle();
-    return NextResponse.json({ text: data?.content || '' });
+    return NextResponse.json({ text: data?.content || '', terms: data?.highlight_terms || [] });
   }
 
   if (mode === 'cached_question') {

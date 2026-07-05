@@ -52,6 +52,18 @@ const DIFFICULTIES: { key: string; label: string }[] = [
   { key: 'hard', label: '심화' },
 ];
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const highlightTerms = (text: string, terms: string[]) => {
+  if (!terms || terms.length === 0) return text;
+  const sorted = [...terms].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`(${sorted.map(escapeRegExp).join('|')})`, 'g');
+  const parts = text.split(pattern);
+  return parts.map((part, idx) =>
+    sorted.includes(part) ? <strong key={idx} style={{ color: '#5b4fff' }}>{part}</strong> : part
+  );
+};
+
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'learn' | 'quiz' | 'analysis' | null>(null);
@@ -63,6 +75,7 @@ export default function Home() {
   const [selectorOpen, setSelectorOpen] = useState(true);
   const [summary, setSummary] = useState('');
   const [summaryLevel, setSummaryLevel] = useState<'detailed' | 'summary' | 'keyword' | null>(null);
+  const [summaryTerms, setSummaryTerms] = useState<string[]>([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [question, setQuestion] = useState<Question | null>(null);
   const [loadingQuestion, setLoadingQuestion] = useState(false);
@@ -177,6 +190,7 @@ export default function Home() {
     setLoadingSummary(true);
     setSummaryLevel(level);
     setSummary('');
+    setSummaryTerms([]);
     const res = await fetch('/api/generate-question', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -184,6 +198,7 @@ export default function Home() {
     });
     const data = await res.json();
     setSummary(data.text || '');
+    setSummaryTerms(data.terms || []);
     setLoadingSummary(false);
   };
 
@@ -550,7 +565,8 @@ export default function Home() {
                         const text = clean.replace(/^#+\s/, '');
                         result.push(<div key={i} style={{ fontWeight: 700, color: '#0f0f1a', marginTop: 16, marginBottom: 6, fontSize: line.startsWith('# ') ? 15 : 14, borderBottom: line.startsWith('## ') ? '1px solid #e4e4f0' : 'none', paddingBottom: line.startsWith('## ') ? 4 : 0 }}>{text}</div>);
                       } else if (line.match(/^[-–>]\s/)) {
-                        result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, display: 'flex', gap: 6 }}><span style={{ color: '#5b4fff', flexShrink: 0 }}>•</span><span>{clean.replace(/^[-–>]\s/, '')}</span></div>);
+                        const bulletText = clean.replace(/^[-–>]\s/, '');
+                        result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, display: 'flex', gap: 6 }}><span style={{ color: '#5b4fff', flexShrink: 0 }}>•</span><span>{summaryLevel === 'detailed' ? highlightTerms(bulletText, summaryTerms) : bulletText}</span></div>);
                       } else if (line.match(/^\d+\.\s/)) {
                         result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, fontWeight: 600 }}>{clean}</div>);
                       } else if (/^(?:•\s*)?([^:：\n]{1,40})[:：]\s*(.+)$/.test(clean)) {
@@ -561,7 +577,7 @@ export default function Home() {
                       } else if (!line.trim()) {
                         result.push(<div key={i} style={{ height: 6 }} />);
                       } else {
-                        result.push(<div key={i} style={{ marginBottom: 4 }}>{clean}</div>);
+                        result.push(<div key={i} style={{ marginBottom: 4 }}>{summaryLevel === 'detailed' ? highlightTerms(clean, summaryTerms) : clean}</div>);
                       }
                       i++;
                     }

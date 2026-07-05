@@ -11,6 +11,7 @@ ArtNCS 콘텐츠 배치 생성 스크립트
 """
 
 import os
+import re
 import time
 import json
 import requests
@@ -131,12 +132,48 @@ def existing_question_count(chapter_id, qtype, difficulty):
     return len(res.json())
 
 
-def insert_summary(chapter_id, level, content):
+def insert_summary(chapter_id, level, content, terms=None):
+    payload = {"chapter_id": chapter_id, "level": level, "content": content}
+    if terms is not None:
+        payload["highlight_terms"] = terms
     requests.post(
         f"{SUPABASE_URL}/rest/v1/chapter_summaries",
         headers=HEADERS,
-        json={"chapter_id": chapter_id, "level": level, "content": content},
+        json=payload,
     )
+
+
+def get_summary_terms(chapter_id):
+    res = requests.get(
+        f"{SUPABASE_URL}/rest/v1/chapter_summaries",
+        headers=HEADERS,
+        params={"chapter_id": f"eq.{chapter_id}", "level": "eq.detailed", "is_active": "eq.true", "select": "highlight_terms"},
+    )
+    rows = res.json()
+    return rows[0].get("highlight_terms") if rows else None
+
+
+def update_highlight_terms(chapter_id, terms):
+    requests.patch(
+        f"{SUPABASE_URL}/rest/v1/chapter_summaries",
+        headers=HEADERS,
+        params={"chapter_id": f"eq.{chapter_id}", "level": "eq.detailed", "is_active": "eq.true"},
+        json={"highlight_terms": terms},
+    )
+
+
+def parse_terms(key_points_text):
+    terms = []
+    for line in key_points_text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r'^[\d]+[\.\)]\s*', '', line)
+        line = re.sub(r'^[-•]\s*', '', line)
+        term = re.split(r'[:：]', line, maxsplit=1)[0].strip()
+        if term and len(term) <= 30:
+            terms.append(term)
+    return terms
 
 
 def insert_question(chapter_id, qtype, difficulty, question_data):
@@ -225,14 +262,23 @@ def generate_summaries(chapter):
         try:
             key_points = extract_key_points(chapter)
             detailed_text = generate_detailed(chapter, key_points)
-            insert_summary(chapter["id"], "detailed", detailed_text)
-            print("  [완료] detailed 요약 (1단계: 핵심 추출 → 2단계: 작성)")
+            terms = parse_terms(key_points)
+            insert_summary(chapter["id"], "detailed", detailed_text, terms=terms)
+            print(f"  [완료] detailed 요약 (하이라이트 용어 {len(terms)}개 포함)")
         except Exception as e:
             print(f"  [실패] detailed 요약: {e}")
             detailed_text = None
     else:
         print("  [건너뜀] detailed 요약 - 이미 있음")
         detailed_text = get_summary_content(chapter["id"], "detailed")
+        if not get_summary_terms(chapter["id"]):
+            try:
+                key_points = extract_key_points(chapter)
+                terms = parse_terms(key_points)
+                update_highlight_terms(chapter["id"], terms)
+                print(f"  [완료] highlight_terms 백필: {len(terms)}개 용어 (내용은 그대로)")
+            except Exception as e:
+                print(f"  [실패] highlight_terms 백필: {e}")
 
     if not detailed_text:
         print("  [중단] 상세 버전이 없어 키워드/요약 파생을 건너뜁니다")

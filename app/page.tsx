@@ -425,15 +425,34 @@ export default function Home() {
           </div>
         )}
 
+        {/* 진행 상황 안내 카드 - 탭과 무관하게 항상 표시 */}
+        <div style={{ background: '#0f0f1a', borderRadius: 12, padding: '24px 20px', marginBottom: 16, color: '#fff' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>{selectedTrack || '분야를 선택해주세요'} · NCS 학습모듈</div>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>{selectedChapter?.title || (selectedModule ? '단원을 선택해주세요' : selectedTrack ? '모듈을 선택해주세요' : '분야를 선택해주세요')}</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+            {selectedChapter ? (activeTab ? '원하는 방식으로 학습을 이어가세요' : '학습하기 또는 문제풀기를 선택해주세요') : '단계를 따라 학습 단원을 선택해주세요'}
+          </div>
+        </div>
+
+        {/* 2차 선택: 단원까지 고른 뒤, 학습/문제풀기 아직 안 골랐을 때 */}
+        {selectedChapter && !activeTab && (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <div onClick={() => setActiveTab('learn')}
+              style={{ flex: 1, background: '#fff', border: '1.5px solid #e4e4f0', borderRadius: 12, padding: '20px 0', textAlign: 'center', cursor: 'pointer' }}>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>📖</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f0f1a' }}>학습하기</div>
+            </div>
+            <div onClick={() => setActiveTab('quiz')}
+              style={{ flex: 1, background: '#fff', border: '1.5px solid #e4e4f0', borderRadius: 12, padding: '20px 0', textAlign: 'center', cursor: 'pointer' }}>
+              <div style={{ fontSize: 22, marginBottom: 6 }}>✏️</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f0f1a' }}>문제풀기</div>
+            </div>
+          </div>
+        )}
+
         {/* 학습 탭 */}
         {activeTab === 'learn' && (
           <div>
-            <div style={{ background: '#0f0f1a', borderRadius: 12, padding: '24px 20px', marginBottom: 16, color: '#fff' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>{selectedTrack || '분야를 선택해주세요'} · NCS 학습모듈</div>
-              <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>{selectedChapter?.title || '단원을 선택해주세요'}</div>
-              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>원하는 요약 단계를 선택해주세요</div>
-            </div>
-
             {guestSummaryLocked && (
               <div style={{ background: '#fff', border: '1.5px solid #5b4fff', borderRadius: 12, padding: 24, textAlign: 'center', marginBottom: 12 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 8 }}>모든 학습 요약은 로그인 후 확인 가능해요</div>

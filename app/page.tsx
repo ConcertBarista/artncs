@@ -55,7 +55,7 @@ const DIFFICULTIES: { key: string; label: string }[] = [
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'learn' | 'quiz' | 'analysis'>('learn');
-  const [selectedTrack, setSelectedTrack] = useState('문화예술경영');
+  const [selectedTrack, setSelectedTrack] = useState('');
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -96,13 +96,18 @@ export default function Home() {
     });
   }, []);
 
-  // 트랙 변경 시 모듈 로드
+  // 트랙 변경 시 모듈 로드 (자동 선택 없음 - 사용자가 직접 골라야 다음 단계가 나타남)
   useEffect(() => {
+    if (!selectedTrack) {
+      setModules([]);
+      setSelectedModule(null);
+      return;
+    }
     fetch(`/api/generate-question?track=${encodeURIComponent(selectedTrack)}`)
       .then(r => r.json())
       .then(data => {
         setModules(data);
-        setSelectedModule(data[0] || null);
+        setSelectedModule(null);
         setChapters([]);
         setSelectedChapter(null);
         setSummary('');
@@ -111,14 +116,18 @@ export default function Home() {
       });
   }, [selectedTrack]);
 
-  // 모듈 변경 시 챕터 로드
+  // 모듈 변경 시 챕터 로드 (자동 선택 없음 - 사용자가 직접 골라야 다음 단계가 나타남)
   useEffect(() => {
-    if (!selectedModule) return;
+    if (!selectedModule) {
+      setChapters([]);
+      setSelectedChapter(null);
+      return;
+    }
     fetch(`/api/generate-question?moduleId=${selectedModule.id}`)
       .then(r => r.json())
       .then(data => {
         setChapters(data);
-        setSelectedChapter(data[0] || null);
+        setSelectedChapter(null);
         setSummary('');
         setSummaryLevel(null);
         setQuestion(null);
@@ -435,7 +444,7 @@ export default function Home() {
         {activeTab === 'learn' && (
           <div>
             <div style={{ background: '#0f0f1a', borderRadius: 12, padding: '24px 20px', marginBottom: 16, color: '#fff' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>{selectedTrack} · NCS 학습모듈</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#5b4fff', marginBottom: 8 }}>{selectedTrack || '분야를 선택해주세요'} · NCS 학습모듈</div>
               <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>{selectedChapter?.title || '단원을 선택해주세요'}</div>
               <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>원하는 요약 단계를 선택해주세요</div>
             </div>

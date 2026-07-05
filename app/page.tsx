@@ -553,6 +553,9 @@ export default function Home() {
                         result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, display: 'flex', gap: 6 }}><span style={{ color: '#5b4fff', flexShrink: 0 }}>•</span><span>{clean.replace(/^[-–>]\s/, '')}</span></div>);
                       } else if (line.match(/^\d+\.\s/)) {
                         result.push(<div key={i} style={{ paddingLeft: 12, marginBottom: 4, fontWeight: 600 }}>{clean}</div>);
+                      } else if (/^(?:•\s*)?([^:：\n]{1,40})[:：]\s*(.+)$/.test(clean)) {
+                        const m = clean.match(/^(?:•\s*)?([^:：\n]{1,40})[:：]\s*(.+)$/)!;
+                        result.push(<div key={i} style={{ marginBottom: 4 }}><strong style={{ color: '#5b4fff' }}>{m[1].trim()}</strong>{`: ${m[2]}`}</div>);
                       } else if (line === '---') {
                         result.push(<hr key={i} style={{ border: 'none', borderTop: '1px solid #e4e4f0', margin: '10px 0' }} />);
                       } else if (!line.trim()) {

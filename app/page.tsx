@@ -54,7 +54,7 @@ const DIFFICULTIES: { key: string; label: string }[] = [
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'learn' | 'quiz' | 'analysis'>('learn');
+  const [activeTab, setActiveTab] = useState<'learn' | 'quiz' | 'analysis' | null>(null);
   const [selectedTrack, setSelectedTrack] = useState('');
   const [modules, setModules] = useState<Module[]>([]);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
@@ -162,22 +162,6 @@ export default function Home() {
     setGuestSummaryLocked(viewedIds.length >= 3 && !viewedIds.includes(selectedChapter.id));
   }, [selectedChapter, user]);
 
-  // 클릭 최소화: 학습하기 탭 진입 시 자동으로 기본 요약 불러오기
-  useEffect(() => {
-    if (activeTab !== 'learn') return;
-    if (!selectedChapter || guestSummaryLocked) return;
-    if (summary || loadingSummary) return;
-    loadSummary(selectedChapter, summaryLevel || 'summary');
-  }, [activeTab, selectedChapter, guestSummaryLocked]);
-
-  // 클릭 최소화: 문제풀기 탭 진입 시 자동으로 문제 불러오기
-  useEffect(() => {
-    if (activeTab !== 'quiz') return;
-    if (!selectedChapter || guestLimitReached) return;
-    if (question || loadingQuestion) return;
-    loadQuestion(manualDifficulty || getRecommendedDifficulty());
-  }, [activeTab, selectedChapter, guestLimitReached]);
-
   const loadSummary = async (chapter: Chapter, level: 'detailed' | 'summary' | 'keyword') => {
     if (user?.is_anonymous) {
       const viewedIds = user.user_metadata?.guest_summary_chapter_ids || [];
@@ -277,6 +261,7 @@ export default function Home() {
 
   const selectChapterAndClose = (ch: Chapter) => {
     setSelectedChapter(ch);
+    setActiveTab(null);
     setSummary('');
     setSummaryLevel(null);
     setQuestion(null);
@@ -460,7 +445,7 @@ export default function Home() {
               </div>
             )}
 
-            {!guestSummaryLocked && (
+            {!guestSummaryLocked && selectedChapter && (
               <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 {SUMMARY_LEVELS.map(lv => (
                   <div key={lv.key} onClick={() => selectedChapter && loadSummary(selectedChapter, lv.key)}
@@ -565,7 +550,7 @@ export default function Home() {
               </div>
             )}
 
-            {!guestLimitReached && !loadingQuestion && (
+            {!guestLimitReached && !loadingQuestion && selectedChapter && (
               <div style={{ marginBottom: 12 }}>
                 <div style={{ fontSize: 11, color: '#7a7a96', marginBottom: 6 }}>
                   난이도 선택 {!manualDifficulty && `(추천: ${DIFFICULTIES.find(d => d.key === getRecommendedDifficulty())?.label})`}

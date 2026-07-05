@@ -42,9 +42,9 @@ const TRACKS = ['문화예술경영', '문화예술기획', '문화예술행정'
 const OPEN_TRACKS = ['문화예술경영'];
 const OPEN_MODULES = ['문화예술 경영전략수립'];
 const SUMMARY_LEVELS: { key: 'detailed' | 'summary' | 'keyword'; label: string }[] = [
-  { key: 'detailed', label: '상세' },
-  { key: 'summary', label: '요약' },
   { key: 'keyword', label: '키워드' },
+  { key: 'summary', label: '요약' },
+  { key: 'detailed', label: '상세' },
 ];
 const DIFFICULTIES: { key: string; label: string }[] = [
   { key: 'easy', label: '기본' },
@@ -349,12 +349,14 @@ export default function Home() {
       </div>
 
       {/* 메인 탭 */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e4e4f0', display: 'flex', position: 'sticky', top: 56, zIndex: 99 }}>
-        {(['learn', 'quiz', 'analysis'] as const).map((tab) => (
-          <div key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '14px 0', textAlign: 'center', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: activeTab === tab ? '#5b4fff' : '#999', borderBottom: activeTab === tab ? '2px solid #5b4fff' : '2px solid transparent' }}>
-            {tab === 'learn' ? '📖 학습하기' : tab === 'quiz' ? '✏️ 문제풀기' : '📊 학습분석'}
-          </div>
-        ))}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e4e4f0', position: 'sticky', top: 56, zIndex: 99 }}>
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 16px', display: 'flex' }}>
+          {(['learn', 'quiz', 'analysis'] as const).map((tab) => (
+            <div key={tab} onClick={() => setActiveTab(tab)} style={{ flex: 1, padding: '14px 0', textAlign: 'center', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: activeTab === tab ? '#5b4fff' : '#999', borderBottom: activeTab === tab ? '2px solid #5b4fff' : '2px solid transparent' }}>
+              {tab === 'learn' ? '📖 학습하기' : tab === 'quiz' ? '✏️ 문제풀기' : '📊 학습분석'}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '20px 16px 80px' }}>

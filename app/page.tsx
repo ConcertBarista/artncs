@@ -434,18 +434,45 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 2차 선택: 단원까지 고른 뒤, 학습/문제풀기 아직 안 골랐을 때 */}
+        {/* 2차+3차 통합 선택: 단원까지 고른 뒤, 학습/문제풀기와 레벨/난이도를 한 화면에서 바로 선택 */}
         {selectedChapter && !activeTab && (
-          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-            <div onClick={() => setActiveTab('learn')}
-              style={{ flex: 1, background: '#fff', border: '1.5px solid #e4e4f0', borderRadius: 12, padding: '20px 0', textAlign: 'center', cursor: 'pointer' }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>📖</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f0f1a' }}>학습하기</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+            <div style={{ background: '#fff', border: '1.5px solid #e4e4f0', borderRadius: 12, padding: 18 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 12 }}>📖 학습하기</div>
+              {guestSummaryLocked ? (
+                <div style={{ fontSize: 12, color: '#7a7a96' }}>
+                  3개 단원까지 체험하셨어요.{' '}
+                  <span onClick={() => setShowLoginModal(true)} style={{ color: '#5b4fff', fontWeight: 700, cursor: 'pointer' }}>로그인하고 계속하기</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {SUMMARY_LEVELS.map(lv => (
+                    <div key={lv.key} onClick={() => { setActiveTab('learn'); if (selectedChapter) loadSummary(selectedChapter, lv.key); }}
+                      style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: '1.5px solid #e4e4f0', color: '#666' }}>
+                      {lv.label}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div onClick={() => setActiveTab('quiz')}
-              style={{ flex: 1, background: '#fff', border: '1.5px solid #e4e4f0', borderRadius: 12, padding: '20px 0', textAlign: 'center', cursor: 'pointer' }}>
-              <div style={{ fontSize: 22, marginBottom: 6 }}>✏️</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#0f0f1a' }}>문제풀기</div>
+
+            <div style={{ background: '#fff', border: '1.5px solid #e4e4f0', borderRadius: 12, padding: 18 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f0f1a', marginBottom: 12 }}>✏️ 문제풀기</div>
+              {guestLimitReached ? (
+                <div style={{ fontSize: 12, color: '#7a7a96' }}>
+                  이 단원은 이미 체험하셨어요.{' '}
+                  <span onClick={() => setShowLoginModal(true)} style={{ color: '#5b4fff', fontWeight: 700, cursor: 'pointer' }}>로그인하고 계속하기</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {DIFFICULTIES.map(d => (
+                    <div key={d.key} onClick={() => { setActiveTab('quiz'); loadQuestion(d.key); }}
+                      style={{ flex: 1, textAlign: 'center', padding: '12px 0', borderRadius: 12, cursor: 'pointer', fontSize: 13, fontWeight: 700, border: '1.5px solid #e4e4f0', color: '#666' }}>
+                      {d.label}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

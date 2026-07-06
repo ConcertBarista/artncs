@@ -162,18 +162,42 @@ def update_highlight_terms(chapter_id, terms):
     )
 
 
-def parse_terms(key_points_text):
+def extract_highlight_terms(chapter, detailed_text):
+    prompt = (
+        f'다음은 "{chapter["title"]}" 단원의 완성된 학습자료입니다:\n\n{detailed_text}\n\n'
+        f'이 문서에서 학습자가 시험이나 실무에서 "고유명사"로 기억해야 할 용어만 추출하세요.\n\n'
+        f'포함할 것:\n'
+        f'- 분석 모델·프레임워크의 이름과 그 하위 구성요소 전체 (예: "STEEP 분석"과 그 5개 요인 각각)\n'
+        f'- 법령명, 시스템명, 기관명, 학술적으로 이름이 붙은 개념·이론\n'
+        f'- 표에 나온 분류 항목명 (예: "박스오피스", "공연통계")\n\n'
+        f'제외할 것:\n'
+        f'- 일반 명사나 흔한 단어 (예: "방법", "특성", "구분", "정보")\n'
+        f'- 고유한 이름이 없는 서술적 표현\n'
+        f'- 문장 속 일반적인 동사·형용사구\n\n'
+        f'문서에 쓰인 표현을 그대로 사용하고, 한 줄에 용어 하나씩, 번호·설명 없이 나열하세요. '
+        f'보통 이런 기준을 지키면 30~60개 정도가 자연스러운데, 억지로 그 안에 맞추려고 기준을 어기지는 마세요.'
+    )
+    text = call_claude(prompt, max_tokens=2000)
     terms = []
-    for line in key_points_text.split("\n"):
+    for line in text.split("\n"):
         line = line.strip()
         if not line:
             continue
+        line = re.sub(r'^[#\*\s]+', '', line)
+        line = re.sub(r'^[①②③④⑤⑥⑦⑧⑨⑩]\s*', '', line)
         line = re.sub(r'^[\d]+[\.\)]\s*', '', line)
         line = re.sub(r'^[-•]\s*', '', line)
-        term = re.split(r'[:：]', line, maxsplit=1)[0].strip()
-        if term and len(term) <= 30:
-            terms.append(term)
-    return terms
+        line = line.strip('*').strip()
+        if line and 1 <= len(line) <= 30:
+            terms.append(line)
+    # 중복 제거 + 실제 본문에 존재하는 용어만 남기기 (매칭 정확도 방어)
+    seen = set()
+    filtered = []
+    for t in terms:
+        if t not in seen and t in detailed_text:
+            seen.add(t)
+            filtered.append(t)
+    return filtered
 
 
 def insert_question(chapter_id, qtype, difficulty, question_data):
@@ -262,7 +286,7 @@ def generate_summaries(chapter):
         try:
             key_points = extract_key_points(chapter)
             detailed_text = generate_detailed(chapter, key_points)
-            terms = parse_terms(key_points)
+            terms = extract_highlight_terms(chapter, detailed_text)
             insert_summary(chapter["id"], "detailed", detailed_text, terms=terms)
             print(f"  [완료] detailed 요약 (하이라이트 용어 {len(terms)}개 포함)")
         except Exception as e:
@@ -273,8 +297,7 @@ def generate_summaries(chapter):
         detailed_text = get_summary_content(chapter["id"], "detailed")
         if not get_summary_terms(chapter["id"]):
             try:
-                key_points = extract_key_points(chapter)
-                terms = parse_terms(key_points)
+                terms = extract_highlight_terms(chapter, detailed_text)
                 update_highlight_terms(chapter["id"], terms)
                 print(f"  [완료] highlight_terms 백필: {len(terms)}개 용어 (내용은 그대로)")
             except Exception as e:
